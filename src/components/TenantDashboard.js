@@ -8,7 +8,13 @@ import { useMaintenanceRequests } from '../hooks/useMaintenanceRequests';
 import { usePayments } from '../hooks/usePayments';
 import Layout from './Layout';
 
-const socket = io(process.env.REACT_APP_SOCKET_URL || 'http://localhost:5000');
+// Initialize Socket.IO with explicit options
+const socket = io(process.env.REACT_APP_SOCKET_URL || 'https://metovan-backend.onrender.com', {
+  transports: ['websocket', 'polling'], // Prefer WebSocket, fallback to polling
+  reconnection: true,
+  reconnectionAttempts: 5,
+  reconnectionDelay: 1000,
+});
 
 const TenantDashboard = () => {
   const navigate = useNavigate();
@@ -30,11 +36,11 @@ const TenantDashboard = () => {
     property_id: '',
   });
 
-  const { tenants, loading: tenantsLoading } = useTenants();
-  const { maintenanceRequests, loading: maintenanceLoading } = useMaintenanceRequests();
+  const { tenants, loading: tenantsLoading, error: tenantsError } = useTenants();
+  const { maintenanceRequests, loading: maintenanceLoading, error: maintenanceError } = useMaintenanceRequests();
   const { payments, loading: paymentsLoading } = usePayments();
 
-  const tenant = tenants.length > 0 ? tenants[0] : null; // Assume single tenant for logged-in user
+  const tenant = tenants.length > 0 ? tenants[0] : null;
 
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
@@ -64,14 +70,26 @@ const TenantDashboard = () => {
         if (response.data.role !== 'tenant') {
           navigate(response.data.role === 'admin' ? '/admin-dashboard' : '/landlord-dashboard');
         }
-        // Pre-fill property_id for forms
         if (tenant) {
-          setMaintenanceData((prev) => ({ ...prev, property_id: tenant.property_id }));
-          setPaymentData((prev) => ({ ...prev, property_id: tenant.property_id }));
+          setMaintenanceData((prev) => ({ ...prev, property_id: tenant.property_id || '' }));
+          setPaymentData((prev) => ({
+            ...prev,
+            property_id: tenant.property_id || '',
+            phone_number: response.data.phone || '',
+          }));
         }
       })
-      .catch(() => navigate('/login'));
+      .catch((error) => {
+        console.error('Auth error:', error.response?.data || error.message);
+        navigate('/login');
+      });
 
+    socket.on('connect', () => {
+      console.log('Socket.IO connected');
+    });
+    socket.on('connect_error', (error) => {
+      console.error('Socket.IO connection error:', error.message);
+    });
     socket.on('maintenance_request', (data) => {
       console.log('New maintenance request:', data);
     });
@@ -83,6 +101,8 @@ const TenantDashboard = () => {
     });
 
     return () => {
+      socket.off('connect');
+      socket.off('connect_error');
       socket.off('maintenance_request');
       socket.off('payment_initiated');
       socket.off('payment_status');
@@ -91,7 +111,12 @@ const TenantDashboard = () => {
 
   const handleMaintenanceSubmit = async (e) => {
     e.preventDefault();
+    setShowMaintenanceForm(false);
     try {
+      if (!tenant) {
+        alert('Tenant information not available');
+        return;
+      }
       await axios.post(
         `${process.env.REACT_APP_API_URL}/api/maintenance`,
         maintenanceData,
@@ -99,7 +124,7 @@ const TenantDashboard = () => {
           headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
         }
       );
-      setShowMaintenanceForm(false);
+      alert('Maintenance request submitted successfully');
       setMaintenanceData({
         title: '',
         description: '',
@@ -107,61 +132,62 @@ const TenantDashboard = () => {
         property_id: tenant?.property_id || '',
       });
     } catch (error) {
-      console.error('Error submitting maintenance request:', error);
+      console.error('Error submitting maintenance request:', {
+        message: error.message,
+        response: error.response?.data,
+      });
       alert(error.response?.data?.message || 'Failed to submit maintenance request');
     }
   };
 
   const handlePaymentSubmit = async (e) => {
-  e.preventDefault();
-  setShowPaymentForm(false); // Close form early for better UX
-  try {
-    // Validate paymentData
-    if (!paymentData.amount || isNaN(paymentData.amount) || paymentData.amount <= 0) {
-      alert('Please enter a valid amount');
-      return;
-    }
-    if (!paymentData.payment_method) {
-      alert('Please select a payment method');
-      return;
-    }
-    if (paymentData.payment_method === 'mpesa' && !paymentData.phone_number) {
-      alert('Phone number is required for M-Pesa');
-      return;
-    }
-    if (!paymentData.property_id) {
-      alert('Property information is missing');
-      return;
-    }
-
-    const response = await axios.post(
-      `${process.env.REACT_APP_API_URL}/api/payments`,
-      {
-        amount: parseFloat(paymentData.amount),
-        payment_method: paymentData.payment_method,
-        phone_number: paymentData.payment_method === 'mpesa' ? paymentData.phone_number : null,
-        property_id: paymentData.property_id,
-      },
-      {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+    e.preventDefault();
+    setShowPaymentForm(false);
+    try {
+      if (!tenant) {
+        alert('Tenant information not available');
+        return;
       }
-    );
-    alert(response.data.message || 'Payment initiated successfully');
-    setPaymentData({
-      amount: '',
-      payment_method: 'mpesa',
-      phone_number: '',
-      property_id: tenant?.property_id || '',
-    });
-  } catch (error) {
-    console.error('Error initiating payment:', {
-      message: error.message,
-      response: error.response?.data,
-      status: error.response?.status,
-    });
-    alert(error.response?.data?.message || 'Failed to initiate payment');
-  }
-};
+      if (!paymentData.amount || isNaN(paymentData.amount) || paymentData.amount <= 0) {
+        alert('Please enter a valid amount');
+        return;
+      }
+      if (!paymentData.payment_method) {
+        alert('Please select a payment method');
+        return;
+      }
+      if (paymentData.payment_method === 'mpesa' && !paymentData.phone_number) {
+        alert('Phone number is required for M-Pesa');
+        return;
+      }
+      const response = await axios.post(
+        `${process.env.REACT_APP_API_URL}/api/payments`,
+        {
+          amount: parseFloat(paymentData.amount),
+          payment_method: paymentData.payment_method,
+          phone_number: paymentData.payment_method === 'mpesa' ? paymentData.phone_number : null,
+          property_id: paymentData.property_id,
+        },
+        {
+          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+        }
+      );
+      alert(response.data.message || 'Payment initiated successfully');
+      setPaymentData({
+        amount: '',
+        payment_method: 'mpesa',
+        phone_number: tenant?.phone || '',
+        property_id: tenant?.property_id || '',
+      });
+    } catch (error) {
+      console.error('Error initiating payment:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+      });
+      alert(error.response?.data?.message || 'Failed to initiate payment');
+    }
+  };
 
   if (tenantsLoading || maintenanceLoading || paymentsLoading) {
     return (
@@ -171,15 +197,24 @@ const TenantDashboard = () => {
             <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500 mx-auto mb-4"></div>
             <p className="text-gray-600 text-sm">Loading dashboard...</p>
           </div>
-        </div>  
         </Layout>
       );
+    );
+  }
+
+  if (tenantsError || maintenanceError) {
+    return (
+      <Layout role="tenant" onMenuToggle={toggleSidebar}>
+        <div className="min-h-96 flex items-center justify-center">
+          <p className="text-red-600 text-sm">{tenantsError || maintenanceError}</p>
+        </div>
+      </Layout>
+    );
   }
 
   return (
     <Layout role="tenant" onMenuToggle={toggleSidebar}>
       <div className="flex min-h-screen">
-        {/* Sidebar */}
         <aside
           className={`fixed top-0 left-0 w-64 bg-white shadow-md z-40 md:static md:flex md:flex-col h-auto ${
             sidebarOpen ? 'block' : 'hidden'
@@ -220,7 +255,6 @@ const TenantDashboard = () => {
           </nav>
         </aside>
 
-        {/* Main Content */}
         <div className="flex-1 p-4">
           <div className="space-y-6">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -248,7 +282,6 @@ const TenantDashboard = () => {
               )}
             </div>
 
-            {/* Content with Slide Animation */}
             <div
               className={`bg-white p-4 rounded-lg shadow relative transition-transform duration-300 ease-in-out ${
                 slideDirection === 'right' ? 'translate-x-10 opacity-0' : slideDirection === 'left' ? '-translate-x-10 opacity-0' : 'translate-x-0 opacity-100'
@@ -335,7 +368,6 @@ const TenantDashboard = () => {
             </div>
           </div>
 
-          {/* Maintenance Form Modal */}
           {showMaintenanceForm && (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
               <div className="bg-white p-4 rounded-lg shadow-lg max-w-sm w-full">
@@ -408,7 +440,6 @@ const TenantDashboard = () => {
             </div>
           )}
 
-          {/* Payment Form Modal */}
           {showPaymentForm && (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
               <div className="bg-white p-4 rounded-lg shadow-lg max-w-sm w-full">
