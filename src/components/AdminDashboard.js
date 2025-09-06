@@ -16,7 +16,7 @@ import EditPropertyModal from './EditPropertyModal';
 import EditTenantModal from './EditTenantModal';
 
 // Initialize socket connection
-const socket = io(process.env.REACT_APP_SOCKET_URL || 'http://localhost:5000');
+const socket = io(process.env.REACT_APP_SOCKET_URL || 'https://metovan-backend.onrender.com');
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
