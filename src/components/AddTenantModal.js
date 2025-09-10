@@ -42,7 +42,7 @@ const AddTenantModal = ({ onClose }) => {
       const allowedEmails = allowedResponse.data.data || allowedResponse.data;
       const isUser = users.some((user) => user.email.toLowerCase() === normalizedEmail);
       const isAllowed = allowedEmails.some((ae) => ae.email.toLowerCase() === normalizedEmail);
-      
+
       if (isUser) {
         setError('This email is already registered as a user.');
         return false;
@@ -53,8 +53,12 @@ const AddTenantModal = ({ onClose }) => {
       }
       return true;
     } catch (error) {
-      console.error('Error checking email availability:', error);
-      const errorMessage = error.response?.data?.message || error.message || 'Failed to check email availability';
+      console.error('Error checking email availability:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+      });
+      const errorMessage = error.response?.data?.message || error.response?.data?.error || error.message || 'Failed to check email availability';
       setError(errorMessage);
       return false;
     }
@@ -84,12 +88,12 @@ const AddTenantModal = ({ onClose }) => {
         return;
       }
 
-      await axios.post(
+      const response = await axios.post(
         `${process.env.REACT_APP_API_URL}/api/auth/allowed-emails`,
         {
           email: formData.email.toLowerCase(),
           role: formData.role,
-          property_id: formData.property_id,
+          property_id: parseInt(formData.property_id), // Ensure property_id is an integer
         },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -106,9 +110,14 @@ const AddTenantModal = ({ onClose }) => {
         }
       }, 2000);
     } catch (error) {
-      console.error('Error approving email:', error);
+      console.error('Error approving email:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+      });
       const errorMessage =
         error.response?.data?.message ||
+        error.response?.data?.error ||
         error.message ||
         'Failed to approve email. Please check server connection or try again.';
       setError(errorMessage);
