@@ -58,7 +58,7 @@ const AddTenantModal = ({ onClose }) => {
         response: error.response?.data,
         status: error.response?.status,
       });
-      const errorMessage = error.response?.data?.message || error.response?.data?.error || error.message || 'Failed to check email availability';
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to check email availability';
       setError(errorMessage);
       return false;
     }
@@ -77,7 +77,7 @@ const AddTenantModal = ({ onClose }) => {
 
     const isEmailAvailable = await checkEmailAvailability(formData.email);
     if (!isEmailAvailable) {
-      return; // Error is already set in checkEmailAvailability
+      return;
     }
 
     setSubmitLoading(true);
@@ -93,7 +93,7 @@ const AddTenantModal = ({ onClose }) => {
         {
           email: formData.email.toLowerCase(),
           role: formData.role,
-          property_id: parseInt(formData.property_id), // Ensure property_id is an integer
+          property_id: parseInt(formData.property_id),
         },
         { headers: { Authorization: `Bearer ${token}` } }
       );
