@@ -36,8 +36,8 @@ const TenantDashboard = () => {
     property_id: '',
   });
 
-  const { tenants, loading: tenantsLoading, error: tenantsError } = useTenants();
-  const { maintenanceRequests, loading: maintenanceLoading, error: maintenanceError } = useMaintenanceRequests();
+  const { tenants, loading: tenantsLoading, error: tenantsError, refetch: refetchTenants } = useTenants();
+  const { maintenanceRequests, loading: maintenanceLoading, error: maintenanceError, refetch: refetchMaintenance } = useMaintenanceRequests();
   const { payments, loading: paymentsLoading } = usePayments();
 
   const tenant = tenants.length > 0 ? tenants[0] : null;
