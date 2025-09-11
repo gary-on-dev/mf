@@ -638,7 +638,11 @@ const AdminDashboard = () => {
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-sm font-semibold">Tenants</h3>
                   </div>
-                  {tenants.length > 0 ? (
+                  {tenantsLoading ? (
+                    <p className="text-gray-600 text-sm">Loading tenants...</p>
+                  ) : error ? (
+                    <p className="text-red-600 text-sm">{error}</p>
+                  ) : tenants.length > 0 ? (
                     <div className="overflow-x-auto">
                       <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
@@ -656,7 +660,7 @@ const AdminDashboard = () => {
                               <td className="px-3 py-2 text-xs sm:text-sm text-gray-900">{tenant.name || '-'}</td>
                               <td className="px-3 py-2 text-xs sm:text-sm text-gray-900">{tenant.email || '-'}</td>
                               <td className="px-3 py-2 text-xs sm:text-sm text-gray-900">
-                                {properties.find((p) => p.id === tenant.property_id)?.name || '-'}
+                                {tenant.property_name || properties.find((p) => p.id === tenant.property_id)?.name || '-'}
                               </td>
                               <td className="px-3 py-2 text-xs sm:text-sm text-gray-900">{tenant.status || '-'}</td>
                               <td className="px-3 py-2 text-right text-xs sm:text-sm">
