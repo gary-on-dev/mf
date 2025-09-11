@@ -228,19 +228,25 @@ const AdminDashboard = () => {
     });
 
     socket.on('tenant_created', (data) => {
-      setRecentActivities((prev) => [
-        {
-          id: `tenant-${data.id}`,
-          type: 'tenant',
-          message: `New tenant assigned to property ${data.property_id}`,
-          time: new Date().toLocaleDateString(),
-          icon: Users,
-          color: 'text-green-600',
-        },
-        ...prev.slice(0, 4),
-      ]);
-      refetchTenants();
+  setRecentActivities((prev) => [
+    {
+      id: `tenant-${data.id}`,
+      type: 'tenant',
+      message: `New tenant assigned to property ${data.property_id}`,
+      time: new Date().toLocaleDateString(),
+      icon: Users,
+      color: 'text-green-600',
+    },
+    ...prev.slice(0, 4),
+  ]);
+  if (typeof refetchTenants === 'function') {
+    refetchTenants().catch((error) => {
+      console.error('Error refetching tenants:', error);
     });
+  } else {
+    console.warn('refetchTenants is not a function');
+  }
+});
 
     socket.on('tenant_updated', (data) => {
       setRecentActivities((prev) => [
