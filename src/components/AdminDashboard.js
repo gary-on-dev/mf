@@ -33,8 +33,8 @@ const AdminDashboard = () => {
   const [slideDirection, setSlideDirection] = useState(''); // For CRUD content slide
 
   const { properties, loading: propertiesLoading, error: propertiesError, refetch: refetchProperties } = useProperties();
-  const { tenants, loading: tenantsLoading, refetch: refetchTenants } = useTenants();
-  const { maintenanceRequests, loading: maintenanceLoading } = useMaintenanceRequests();
+  const { tenants, loading: tenantsLoading, error: tenantsError, refetch: refetchTenants } = useTenants();
+  const { maintenanceRequests, loading: maintenanceLoading, error: maintenanceError } = useMaintenanceRequests();
   const { payments, loading: paymentsLoading } = usePayments();
 
   const toggleSidebar = () => {
@@ -646,8 +646,8 @@ const AdminDashboard = () => {
                   </div>
                   {tenantsLoading ? (
                     <p className="text-gray-600 text-sm">Loading tenants...</p>
-                  ) : error ? (
-                    <p className="text-red-600 text-sm">{error}</p>
+                  ) : tenantsError ? (  // Use tenantsError instead of error to avoid naming conflicts
+                    <p className="text-red-600 text-sm">{tenantsError}</p>
                   ) : tenants.length > 0 ? (
                     <div className="overflow-x-auto">
                       <table className="min-w-full divide-y divide-gray-200">
