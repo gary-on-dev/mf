@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Building, Users, TrendingUp, Wrench, DollarSign, AlertCircle, Plus, Edit, Trash, Home, FileText, X } from 'lucide-react';
+import { Building, Users, TrendingUp, Wrench, DollarSign, AlertCircle, Plus, Edit, Trash, Home, FileText, X, Mail } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { io } from 'socket.io-client';
@@ -7,6 +7,7 @@ import { useProperties } from '../hooks/useProperties';
 import { useTenants } from '../hooks/useTenants';
 import { useMaintenanceRequests } from '../hooks/useMaintenanceRequests';
 import { usePayments } from '../hooks/usePayments';
+import { useUsers } from '../hooks/useUsers';
 import Layout from './Layout';
 import AddPropertyModal from './AddPropertyModal';
 import AddTenantModal from './AddTenantModal';
@@ -29,25 +30,93 @@ const AdminDashboard = () => {
   const [showEditProperty, setShowEditProperty] = useState(null);
   const [showEditTenant, setShowEditTenant] = useState(null);
   const [recentActivities, setRecentActivities] = useState([]);
-  const [users, setUsers] = useState([]);
-  const [slideDirection, setSlideDirection] = useState(''); // For CRUD content slide
+  const [slideDirection, setSlideDirection] = useState('');
+
+  // Custom hook for allowed emails
+  const useAllowedEmails = () => {
+    const [allowedEmails, setAllowedEmails] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+
+    const fetchAllowedEmails = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) throw new Error('No authentication token found');
+        const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/auth/allowed-emails`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setAllowedEmails(response.data.data || response.data);
+        setError(null);
+      } catch (err) {
+        console.error('Error fetching allowed emails:', {
+          message: err.message,
+          response: err.response?.data,
+          status: err.response?.status,
+        });
+        setError(err.response?.data?.message || err.message || 'Failed to fetch approved emails');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    useEffect(() => {
+      fetchAllowedEmails();
+      socket.on('email_approved', (data) => {
+        setAllowedEmails((prev) => [...prev, data]);
+        setRecentActivities((prev) => [
+          {
+            id: `email-${data.id}`,
+            type: 'email_approved',
+            message: `Email ${data.email} approved for ${data.role}`,
+            time: new Date(data.created_at).toLocaleDateString(),
+            icon: Mail,
+            color: 'text-purple-600',
+          },
+          ...prev.slice(0, 4),
+        ]);
+      });
+      socket.on('email_removed', (data) => {
+        setAllowedEmails((prev) => prev.filter((email) => email.email !== data.email));
+        setRecentActivities((prev) => [
+          {
+            id: `email-${data.email}`,
+            type: 'email_removed',
+            message: `Approved email ${data.email} removed`,
+            time: new Date().toLocaleDateString(),
+            icon: Mail,
+            color: 'text-red-600',
+          },
+          ...prev.slice(0, 4),
+        ]);
+      });
+      return () => {
+        socket.off('email_approved');
+        socket.off('email_removed');
+      };
+    }, []);
+
+    return { allowedEmails, loading, error, refetch: fetchAllowedEmails };
+  };
 
   const { properties, loading: propertiesLoading, error: propertiesError, refetch: refetchProperties } = useProperties();
   const { tenants, loading: tenantsLoading, error: tenantsError, refetch: refetchTenants } = useTenants();
   const { maintenanceRequests, loading: maintenanceLoading, error: maintenanceError } = useMaintenanceRequests();
   const { payments, loading: paymentsLoading } = usePayments();
+  const { users, loading: usersLoading, error: usersError, refetch: refetchUsers } = useUsers();
+  const { allowedEmails, loading: allowedEmailsLoading, error: allowedEmailsError, refetch: refetchAllowedEmails } = useAllowedEmails();
 
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
   };
 
   const handleTabChange = (tabId) => {
-    const currentIndex = ['users', 'properties', 'tenants', 'maintenance', 'reports'].indexOf(activeTab);
-    const newIndex = ['users', 'properties', 'tenants', 'maintenance', 'reports'].indexOf(tabId);
+    const tabs = ['users', 'approved-emails', 'properties', 'tenants', 'maintenance', 'reports'];
+    const currentIndex = tabs.indexOf(activeTab);
+    const newIndex = tabs.indexOf(tabId);
     setSlideDirection(newIndex > currentIndex ? 'right' : 'left');
     setActiveTab(tabId);
-    setSidebarOpen(false); // Close sidebar on mobile
-    setTimeout(() => setSlideDirection(''), 300); // Reset slide direction after animation
+    setSidebarOpen(false);
+    setTimeout(() => setSlideDirection(''), 300);
   };
 
   useEffect(() => {
@@ -56,20 +125,6 @@ const AdminDashboard = () => {
       navigate('/login');
       return;
     }
-
-    // Fetch users (landlords and agents)
-    const fetchUsers = async () => {
-      try {
-        const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/users`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const data = response.data.data || response.data;
-        setUsers(Array.isArray(data) ? data.filter(user => ['landlord', 'agent'].includes(user.role)) : []);
-      } catch (error) {
-        console.error('Error fetching users:', error);
-      }
-    };
-    fetchUsers();
 
     // Verify user role
     axios
@@ -86,7 +141,7 @@ const AdminDashboard = () => {
         navigate('/login');
       });
 
-    // Socket event listeners (unchanged)
+    // Socket event listeners
     socket.on('maintenance_request', (data) => {
       setRecentActivities((prev) => [
         {
@@ -141,8 +196,8 @@ const AdminDashboard = () => {
         },
         ...prev.slice(0, 4),
       ]);
-      if (['landlord', 'agent'].includes(data.role)) {
-        setUsers((prev) => [...prev, { id: data.id, name: data.name, role: data.role, email: data.email || '', phone: data.phone || '' }]);
+      if (['landlord', 'admin'].includes(data.role)) {
+        refetchUsers();
       }
     });
 
@@ -158,10 +213,8 @@ const AdminDashboard = () => {
         },
         ...prev.slice(0, 4),
       ]);
-      if (['landlord', 'agent'].includes(data.role)) {
-        setUsers((prev) =>
-          prev.map((u) => (u.id === data.id ? { ...u, name: data.name, role: data.role, email: data.email || '', phone: data.phone || '' } : u))
-        );
+      if (['landlord', 'admin'].includes(data.role)) {
+        refetchUsers();
       }
     });
 
@@ -177,8 +230,8 @@ const AdminDashboard = () => {
         },
         ...prev.slice(0, 4),
       ]);
-      if (['landlord', 'agent'].includes(data.role)) {
-        setUsers((prev) => prev.filter((u) => u.id !== data.id));
+      if (['landlord', 'admin'].includes(data.role)) {
+        refetchUsers();
       }
     });
 
@@ -228,25 +281,25 @@ const AdminDashboard = () => {
     });
 
     socket.on('tenant_created', (data) => {
-  setRecentActivities((prev) => [
-    {
-      id: `tenant-${data.id}`,
-      type: 'tenant',
-      message: `New tenant assigned to property ${data.property_id}`,
-      time: new Date().toLocaleDateString(),
-      icon: Users,
-      color: 'text-green-600',
-    },
-    ...prev.slice(0, 4),
-  ]);
-  if (typeof refetchTenants === 'function') {
-    refetchTenants().catch((error) => {
-      console.error('Error refetching tenants:', error);
+      setRecentActivities((prev) => [
+        {
+          id: `tenant-${data.id}`,
+          type: 'tenant',
+          message: `New tenant assigned to property ${data.property_id}`,
+          time: new Date().toLocaleDateString(),
+          icon: Users,
+          color: 'text-green-600',
+        },
+        ...prev.slice(0, 4),
+      ]);
+      if (typeof refetchTenants === 'function') {
+        refetchTenants().catch((error) => {
+          console.error('Error refetching tenants:', error);
+        });
+      } else {
+        console.warn('refetchTenants is not a function');
+      }
     });
-  } else {
-    console.warn('refetchTenants is not a function');
-  }
-});
 
     socket.on('tenant_updated', (data) => {
       setRecentActivities((prev) => [
@@ -291,8 +344,10 @@ const AdminDashboard = () => {
       socket.off('tenant_created');
       socket.off('tenant_updated');
       socket.off('tenant_deleted');
+      socket.off('email_approved');
+      socket.off('email_removed');
     };
-  }, [navigate, refetchProperties, refetchTenants]);
+  }, [navigate, refetchProperties, refetchTenants, refetchUsers]);
 
   const handleDeleteUser = async (id) => {
     if (!window.confirm('Are you sure you want to delete this user?')) return;
@@ -304,6 +359,20 @@ const AdminDashboard = () => {
     } catch (error) {
       console.error('Error deleting user:', error);
       alert(error.response?.data?.message || 'Failed to delete user');
+    }
+  };
+
+  const handleDeleteEmail = async (email) => {
+    if (!window.confirm(`Are you sure you want to remove the approved email ${email}?`)) return;
+    try {
+      await axios.delete(`${process.env.REACT_APP_API_URL}/api/auth/allowed-emails/${email}`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+      });
+      console.log('Approved email deleted:', email);
+      refetchAllowedEmails();
+    } catch (error) {
+      console.error('Error deleting approved email:', error);
+      alert(error.response?.data?.message || 'Failed to delete approved email');
     }
   };
 
@@ -334,9 +403,7 @@ const AdminDashboard = () => {
   };
 
   const handleUpdateUser = (updatedUser) => {
-    setUsers((prev) =>
-      prev.map((u) => (u.id === updatedUser.id ? { ...u, ...updatedUser } : u))
-    );
+    refetchUsers();
     setShowEditUser(null);
   };
 
@@ -360,7 +427,7 @@ const AdminDashboard = () => {
     if (type === 'editTenant') setShowEditTenant(null);
   };
 
-  if (propertiesLoading || tenantsLoading || maintenanceLoading || paymentsLoading) {
+  if (propertiesLoading || tenantsLoading || maintenanceLoading || paymentsLoading || usersLoading || allowedEmailsLoading) {
     return (
       <Layout onMenuToggle={toggleSidebar}>
         <div className="min-h-96 flex items-center justify-center">
@@ -368,16 +435,17 @@ const AdminDashboard = () => {
             <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500 mx-auto mb-4"></div>
             <p className="text-gray-600 text-sm">Loading dashboard...</p>
           </div>
-        </div>  
         </Layout>
-      );
+    );
   }
 
-  if (propertiesError) {
+  if (propertiesError || tenantsError || maintenanceError || usersError || allowedEmailsError) {
     return (
       <Layout onMenuToggle={toggleSidebar}>
         <div className="min-h-96 flex items-center justify-center">
-          <p className="text-red-600 text-sm">{propertiesError}</p>
+          <p className="text-red-600 text-sm">
+            {propertiesError || tenantsError || maintenanceError || usersError || allowedEmailsError}
+          </p>
         </div>
       </Layout>
     );
@@ -423,6 +491,7 @@ const AdminDashboard = () => {
             <ul className="space-y-2">
               {[
                 { id: 'users', label: 'Users', icon: Users },
+                { id: 'approved-emails', label: 'Approved Emails', icon: Mail },
                 { id: 'properties', label: 'Properties', icon: Building },
                 { id: 'tenants', label: 'Tenants', icon: Users },
                 { id: 'maintenance', label: 'Maintenance', icon: Wrench },
@@ -452,7 +521,7 @@ const AdminDashboard = () => {
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div>
                 <h1 className="text-lg sm:text-xl font-bold text-gray-900">Admin Dashboard</h1>
-                <p className="text-gray-600 text-sm">Manage users, properties, and more.</p>
+                <p className="text-gray-600 text-sm">Manage users, approved emails, properties, and more.</p>
               </div>
               <div className="flex flex-wrap gap-2">
                 {activeTab === 'properties' && (
@@ -479,7 +548,16 @@ const AdminDashboard = () => {
                     className="bg-purple-600 text-white px-3 py-1.5 rounded-md hover:bg-purple-700 flex items-center gap-1 text-sm"
                   >
                     <Plus className="h-4 w-4" />
-                    Add User
+                    Approve Email
+                  </button>
+                )}
+                {activeTab === 'approved-emails' && (
+                  <button
+                    onClick={() => setShowAddUser(true)}
+                    className="bg-purple-600 text-white px-3 py-1.5 rounded-md hover:bg-purple-700 flex items-center gap-1 text-sm"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Approve Email
                   </button>
                 )}
               </div>
@@ -540,9 +618,13 @@ const AdminDashboard = () => {
               {activeTab === 'users' && (
                 <div>
                   <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-sm font-semibold">Users (Landlords & Agents)</h3>
+                    <h3 className="text-sm font-semibold">Users (Landlords & Admins)</h3>
                   </div>
-                  {users.length > 0 ? (
+                  {usersLoading ? (
+                    <p className="text-gray-600 text-sm">Loading users...</p>
+                  ) : usersError ? (
+                    <p className="text-red-600 text-sm">{usersError}</p>
+                  ) : users.length > 0 ? (
                     <div className="overflow-x-auto">
                       <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
@@ -560,7 +642,7 @@ const AdminDashboard = () => {
                               <td className="px-3 py-2 text-xs sm:text-sm text-gray-900">{user.name || '-'}</td>
                               <td className="px-3 py-2 text-xs sm:text-sm text-gray-900">{user.email || '-'}</td>
                               <td className="px-3 py-2 text-xs sm:text-sm text-gray-900">{user.phone || '-'}</td>
-                              <td className="px-3 py-2 text-xs sm:text-sm text-gray-900">{user.role || '-'}</td>
+                              <td className="px-3 py-2 text-xs sm:text-sm text-gray-900">{user.role === 'admin' ? 'Admin/Agent' : user.role || '-'}</td>
                               <td className="px-3 py-2 text-right text-xs sm:text-sm">
                                 <button
                                   onClick={() => setShowEditUser(user)}
@@ -584,6 +666,56 @@ const AdminDashboard = () => {
                     </div>
                   ) : (
                     <p className="text-gray-600 text-sm">No users available</p>
+                  )}
+                </div>
+              )}
+
+              {activeTab === 'approved-emails' && (
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-sm font-semibold">Approved Emails</h3>
+                  </div>
+                  {allowedEmailsLoading ? (
+                    <p className="text-gray-600 text-sm">Loading approved emails...</p>
+                  ) : allowedEmailsError ? (
+                    <p className="text-red-600 text-sm">{allowedEmailsError}</p>
+                  ) : allowedEmails.length > 0 ? (
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
+                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Role</th>
+                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Phone</th>
+                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Property ID</th>
+                            <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {allowedEmails.map((email) => (
+                            <tr key={email.id}>
+                              <td className="px-3 py-2 text-xs sm:text-sm text-gray-900">{email.email || '-'}</td>
+                              <td className="px-3 py-2 text-xs sm:text-sm text-gray-900">{email.role === 'admin' ? 'Admin/Agent' : email.role || '-'}</td>
+                              <td className="px-3 py-2 text-xs sm:text-sm text-gray-900">{email.name || '-'}</td>
+                              <td className="px-3 py-2 text-xs sm:text-sm text-gray-900">{email.phone || '-'}</td>
+                              <td className="px-3 py-2 text-xs sm:text-sm text-gray-900">{email.property_id || '-'}</td>
+                              <td className="px-3 py-2 text-right text-xs sm:text-sm">
+                                <button
+                                  onClick={() => handleDeleteEmail(email.email)}
+                                  className="text-red-600 hover:text-red-800"
+                                  title="Remove Approved Email"
+                                >
+                                  <Trash className="h-4 w-4" />
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <p className="text-gray-600 text-sm">No approved emails available</p>
                   )}
                 </div>
               )}
@@ -646,7 +778,7 @@ const AdminDashboard = () => {
                   </div>
                   {tenantsLoading ? (
                     <p className="text-gray-600 text-sm">Loading tenants...</p>
-                  ) : tenantsError ? (  // Use tenantsError instead of error to avoid naming conflicts
+                  ) : tenantsError ? (
                     <p className="text-red-600 text-sm">{tenantsError}</p>
                   ) : tenants.length > 0 ? (
                     <div className="overflow-x-auto">
