@@ -10,6 +10,7 @@ const AddUserModal = ({ onClose }) => {
     bank_name: '',
     bank_account_number: '',
     bank_routing_number: '',
+    property_id: '', // For tenants
   });
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -17,8 +18,8 @@ const AddUserModal = ({ onClose }) => {
 
   // Validate form inputs
   const validateForm = () => {
-    if (!formData.name || !formData.email || !formData.role) {
-      return 'Name, email, and role are required';
+    if (!formData.email || !formData.role) {
+      return 'Email and role are required';
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       return 'Please provide a valid email';
@@ -30,6 +31,9 @@ const AddUserModal = ({ onClose }) => {
       if (!formData.bank_name || !formData.bank_account_number) {
         return 'Bank name and account number are required for landlords';
       }
+    }
+    if (formData.role === 'tenant' && !formData.property_id) {
+      return 'Property ID is required for tenants';
     }
     return null;
   };
@@ -57,36 +61,29 @@ const AddUserModal = ({ onClose }) => {
       // Map 'agent' to 'admin' for backend
       const role = formData.role === 'agent' ? 'admin' : formData.role;
 
-      // Step 1: Add email to allowed_emails
-      await axios.post(
-        `${process.env.REACT_APP_API_URL}/api/auth/allowed-emails`,
-        {
-          email: formData.email.toLowerCase(),
-          role,
-        },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-
-      // Step 2: Create user
+      // Prepare payload for allowed_emails
       const payload = {
-        name: formData.name,
         email: formData.email.toLowerCase(),
-        phone: formData.phone || null,
         role,
+        name: formData.name || null,
+        phone: formData.phone || null,
       };
       if (formData.role === 'landlord') {
         payload.bank_name = formData.bank_name;
         payload.bank_account_number = formData.bank_account_number;
         payload.bank_routing_number = formData.bank_routing_number || null;
       }
+      if (formData.role === 'tenant') {
+        payload.property_id = formData.property_id;
+      }
 
-      const response = await axios.post(
-        `${process.env.REACT_APP_API_URL}/api/users`,
+      await axios.post(
+        `${process.env.REACT_APP_API_URL}/api/auth/allowed-emails`,
         payload,
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      setSuccessMessage(`User added successfully! Temporary password: ${response.data.temporaryPassword}`);
+      setSuccessMessage('Email approved successfully! User can now sign up.');
       setTimeout(() => {
         if (typeof onClose === 'function') {
           onClose();
@@ -95,7 +92,7 @@ const AddUserModal = ({ onClose }) => {
         }
       }, 2000);
     } catch (error) {
-      console.error('Error adding user:', {
+      console.error('Error approving email:', {
         message: error.message,
         response: error.response?.data,
         status: error.response?.status,
@@ -104,7 +101,7 @@ const AddUserModal = ({ onClose }) => {
         error.response?.data?.message ||
         error.response?.data?.error ||
         error.message ||
-        'Failed to add user';
+        'Failed to approve email';
       setError(errorMessage);
     } finally {
       setLoading(false);
@@ -114,18 +111,17 @@ const AddUserModal = ({ onClose }) => {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
       <div className="bg-white p-6 rounded-lg shadow-sm w-full max-w-sm">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Add User</h2>
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">Approve New User Email</h2>
         {error && <p className="text-red-600 text-sm mb-4">{error}</p>}
         {successMessage && <p className="text-green-600 text-sm mb-4">{successMessage}</p>}
         <form onSubmit={handleSubmit} className="space-y-3">
           <div>
-            <label className="block text-sm font-medium text-gray-700">Name</label>
+            <label className="block text-sm font-medium text-gray-700">Name (Optional)</label>
             <input
               type="text"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               className="mt-1 block w-full border border-gray-200 rounded-md shadow-sm p-2 text-sm focus:ring-blue-500 focus:border-blue-500"
-              required
               disabled={loading}
             />
           </div>
@@ -141,7 +137,7 @@ const AddUserModal = ({ onClose }) => {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">Phone</label>
+            <label className="block text-sm font-medium text-gray-700">Phone (Optional)</label>
             <input
               type="tel"
               value={formData.phone}
@@ -201,6 +197,19 @@ const AddUserModal = ({ onClose }) => {
               </div>
             </>
           )}
+          {formData.role === 'tenant' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Property ID</label>
+              <input
+                type="text"
+                value={formData.property_id}
+                onChange={(e) => setFormData({ ...formData, property_id: e.target.value })}
+                className="mt-1 block w-full border border-gray-200 rounded-md shadow-sm p-2 text-sm focus:ring-blue-500 focus:border-blue-500"
+                required
+                disabled={loading}
+              />
+            </div>
+          )}
           <div className="flex justify-end gap-2">
             <button
               type="button"
@@ -215,7 +224,7 @@ const AddUserModal = ({ onClose }) => {
               className="bg-blue-600 text-white px-3 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50 text-sm"
               disabled={loading}
             >
-              {loading ? 'Adding...' : 'Add User'}
+              {loading ? 'Approving...' : 'Approve Email'}
             </button>
           </div>
         </form>
