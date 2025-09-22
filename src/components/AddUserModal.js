@@ -23,7 +23,7 @@ const AddUserModal = ({ onClose }) => {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       return 'Please provide a valid email';
     }
-    if (!['admin', 'landlord', 'tenant'].includes(formData.role)) {
+    if (!['admin', 'agent', 'landlord', 'tenant'].includes(formData.role)) {
       return 'Invalid role selected';
     }
     if (formData.role === 'landlord') {
@@ -54,12 +54,25 @@ const AddUserModal = ({ onClose }) => {
         throw new Error('No authentication token found. Please log in.');
       }
 
-      // Prepare payload (omit empty bank fields for non-landlords)
+      // Map 'agent' to 'admin' for backend
+      const role = formData.role === 'agent' ? 'admin' : formData.role;
+
+      // Step 1: Add email to allowed_emails
+      await axios.post(
+        `${process.env.REACT_APP_API_URL}/api/auth/allowed-emails`,
+        {
+          email: formData.email.toLowerCase(),
+          role,
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      // Step 2: Create user
       const payload = {
         name: formData.name,
         email: formData.email.toLowerCase(),
         phone: formData.phone || null,
-        role: formData.role,
+        role,
       };
       if (formData.role === 'landlord') {
         payload.bank_name = formData.bank_name;
@@ -73,14 +86,14 @@ const AddUserModal = ({ onClose }) => {
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      setSuccessMessage('User added successfully!');
+      setSuccessMessage(`User added successfully! Temporary password: ${response.data.temporaryPassword}`);
       setTimeout(() => {
         if (typeof onClose === 'function') {
           onClose();
         } else {
           console.warn('onClose is not a function');
         }
-      }, 1500);
+      }, 2000);
     } catch (error) {
       console.error('Error adding user:', {
         message: error.message,
@@ -147,6 +160,7 @@ const AddUserModal = ({ onClose }) => {
               disabled={loading}
             >
               <option value="admin">Admin</option>
+              <option value="agent">Agent</option>
               <option value="landlord">Landlord</option>
               <option value="tenant">Tenant</option>
             </select>
