@@ -8,6 +8,7 @@ import { useTenants } from '../hooks/useTenants';
 import { useMaintenanceRequests } from '../hooks/useMaintenanceRequests';
 import { usePayments } from '../hooks/usePayments';
 import { useUsers } from '../hooks/useUsers';
+import { useAllowedEmails } from '../hooks/useAllowedEmails';
 import Layout from './Layout';
 import AddPropertyModal from './AddPropertyModal';
 import AddTenantModal from './AddTenantModal';
