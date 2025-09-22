@@ -6,22 +6,30 @@ const AddUserModal = ({ onClose }) => {
     name: '',
     email: '',
     phone: '',
-    role: 'agent', // Default to 'agent' for clarity
+    role: 'admin', // Default to 'admin'
+    bank_name: '',
+    bank_account_number: '',
+    bank_routing_number: '',
   });
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState(null);
 
-  // Basic frontend validation
+  // Validate form inputs
   const validateForm = () => {
-    if (!formData.name || !formData.email) {
-      return 'Name and email are required';
+    if (!formData.name || !formData.email || !formData.role) {
+      return 'Name, email, and role are required';
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       return 'Please provide a valid email';
     }
-    if (!['agent', 'landlord', 'admin'].includes(formData.role)) {
+    if (!['admin', 'landlord', 'tenant'].includes(formData.role)) {
       return 'Invalid role selected';
+    }
+    if (formData.role === 'landlord') {
+      if (!formData.bank_name || !formData.bank_account_number) {
+        return 'Bank name and account number are required for landlords';
+      }
     }
     return null;
   };
@@ -32,7 +40,7 @@ const AddUserModal = ({ onClose }) => {
     setSuccessMessage(null);
     setLoading(true);
 
-    // Validate form before sending
+    // Validate form
     const validationError = validateForm();
     if (validationError) {
       setError(validationError);
@@ -46,9 +54,22 @@ const AddUserModal = ({ onClose }) => {
         throw new Error('No authentication token found. Please log in.');
       }
 
+      // Prepare payload (omit empty bank fields for non-landlords)
+      const payload = {
+        name: formData.name,
+        email: formData.email.toLowerCase(),
+        phone: formData.phone || null,
+        role: formData.role,
+      };
+      if (formData.role === 'landlord') {
+        payload.bank_name = formData.bank_name;
+        payload.bank_account_number = formData.bank_account_number;
+        payload.bank_routing_number = formData.bank_routing_number || null;
+      }
+
       const response = await axios.post(
         `${process.env.REACT_APP_API_URL}/api/users`,
-        { ...formData }, // Remove hardcoded password
+        payload,
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
@@ -122,13 +143,50 @@ const AddUserModal = ({ onClose }) => {
               value={formData.role}
               onChange={(e) => setFormData({ ...formData, role: e.target.value })}
               className="mt-1 block w-full border border-gray-200 rounded-md shadow-sm p-2 text-sm focus:ring-blue-500 focus:border-blue-500"
+              required
               disabled={loading}
             >
               <option value="admin">Admin</option>
-              <option value="agent">Agent</option>
               <option value="landlord">Landlord</option>
+              <option value="tenant">Tenant</option>
             </select>
           </div>
+          {formData.role === 'landlord' && (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Bank Name</label>
+                <input
+                  type="text"
+                  value={formData.bank_name}
+                  onChange={(e) => setFormData({ ...formData, bank_name: e.target.value })}
+                  className="mt-1 block w-full border border-gray-200 rounded-md shadow-sm p-2 text-sm focus:ring-blue-500 focus:border-blue-500"
+                  required
+                  disabled={loading}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Bank Account Number</label>
+                <input
+                  type="text"
+                  value={formData.bank_account_number}
+                  onChange={(e) => setFormData({ ...formData, bank_account_number: e.target.value })}
+                  className="mt-1 block w-full border border-gray-200 rounded-md shadow-sm p-2 text-sm focus:ring-blue-500 focus:border-blue-500"
+                  required
+                  disabled={loading}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Bank Routing Number (Optional)</label>
+                <input
+                  type="text"
+                  value={formData.bank_routing_number}
+                  onChange={(e) => setFormData({ ...formData, bank_routing_number: e.target.value })}
+                  className="mt-1 block w-full border border-gray-200 rounded-md shadow-sm p-2 text-sm focus:ring-blue-500 focus:border-blue-500"
+                  disabled={loading}
+                />
+              </div>
+            </>
+          )}
           <div className="flex justify-end gap-2">
             <button
               type="button"
