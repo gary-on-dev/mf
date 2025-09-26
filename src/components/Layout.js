@@ -5,7 +5,8 @@ import io from 'socket.io-client';
 import { Menu, User, Bell, LogOut } from 'lucide-react';
 import metovanLogo from '../assets/metovan1.png';
 
-const socket = io(process.env.REACT_APP_API_URL || 'http://localhost:5000', {
+// Initialize Socket.IO with the correct URL
+const socket = io(process.env.REACT_APP_API_URL || 'https://metovan-backend.onrender.com', {
   reconnection: true,
   reconnectionAttempts: 5,
   reconnectionDelay: 1000,
@@ -23,6 +24,7 @@ const Layout = ({ children, onMenuToggle, role }) => {
     try {
       const token = localStorage.getItem('token');
       if (!token) {
+        console.warn('No token found, redirecting to login');
         navigate('/login');
         return;
       }
@@ -31,7 +33,11 @@ const Layout = ({ children, onMenuToggle, role }) => {
       });
       setUser(response.data);
     } catch (error) {
-      console.error('Error fetching user:', error);
+      console.error('Error fetching user:', {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data,
+      });
       localStorage.removeItem('token');
       navigate('/login');
     }
@@ -40,13 +46,25 @@ const Layout = ({ children, onMenuToggle, role }) => {
   const fetchActivities = useCallback(async () => {
     try {
       const token = localStorage.getItem('token');
+      if (!token) {
+        console.warn('No token for activities, skipping fetch');
+        return;
+      }
+      console.log('Fetching activities from:', `${process.env.REACT_APP_API_URL}/api/activity`);
       const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/activity`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setNotifications(response.data.data || []);
-      setUnreadCount(response.data.data.length);
+      const activities = response.data.data || [];
+      setNotifications(activities);
+      setUnreadCount(activities.length);
     } catch (error) {
-      console.error('Error fetching activities:', error);
+      console.error('Error fetching activities:', {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data,
+      });
+      // Optionally, set an error state for UI feedback
+      // setNotifications([{ type: 'error', message: 'Failed to load activities', created_at: new Date() }]);
     }
   }, []);
 
@@ -57,6 +75,7 @@ const Layout = ({ children, onMenuToggle, role }) => {
   };
 
   useEffect(() => {
+    console.log('API URL:', process.env.REACT_APP_API_URL); // Debug
     fetchUser();
     fetchActivities();
 
@@ -65,18 +84,27 @@ const Layout = ({ children, onMenuToggle, role }) => {
     });
 
     socket.on('tenant_created', (data) => {
-      setNotifications((prev) => [data, ...prev.slice(0, 9)]);
+      console.log('Socket: tenant_created', data);
+      setNotifications((prev) => [
+        { ...data, type: 'tenant_created', message: `New tenant ${data.email} assigned to ${data.property_name}` },
+        ...prev.slice(0, 9),
+      ]);
       setUnreadCount((prev) => prev + 1);
     });
 
     socket.on('email_approved', (data) => {
-      setNotifications((prev) => [data, ...prev.slice(0, 9)]);
+      console.log('Socket: email_approved', data);
+      setNotifications((prev) => [
+        { ...data, type: 'email_approved', message: `Email ${data.email} approved for ${data.property_name || data.role}` },
+        ...prev.slice(0, 9),
+      ]);
       setUnreadCount((prev) => prev + 1);
     });
 
     return () => {
       socket.off('tenant_created');
       socket.off('email_approved');
+      socket.off('connect');
     };
   }, [fetchUser, fetchActivities]);
 
@@ -97,19 +125,18 @@ const Layout = ({ children, onMenuToggle, role }) => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center space-x-3">
-              
-              <div className="flex items-center space-x-2">
-                <img src={metovanLogo} alt="Metovan Logo" className="h-8 w-auto" />
-                <span className="text-xl font-bold text-blue-600">Metovan</span>
-              </div>
-            </div>
-            <div className="flex items-center space-x-3">
               <button
                 onClick={onMenuToggle}
                 className="p-2 rounded-md hover:bg-gray-100 transition-colors md:hidden"
               >
                 <Menu className="h-5 w-5 text-gray-600" />
               </button>
+              <div className="flex items-center space-x-2">
+                <img src={metovanLogo} alt="Metovan Logo" className="h-8 w-auto" />
+                <span className="text-xl font-bold text-blue-600">Metovan</span>
+              </div>
+            </div>
+            <div className="flex items-center space-x-3">
               <div className="relative">
                 <button
                   onClick={handleNotificationClick}
@@ -132,11 +159,7 @@ const Layout = ({ children, onMenuToggle, role }) => {
                         <ul className="space-y-2">
                           {notifications.map((activity, index) => (
                             <li key={index} className="text-sm text-gray-700">
-                              <span className="font-medium">
-                                {activity.type === 'tenant_created'
-                                  ? `New tenant ${activity.email} assigned to ${activity.property_name}`
-                                  : `Email ${activity.email} approved for ${activity.property_name}`}
-                              </span>
+                              <span className="font-medium">{activity.message}</span>
                               <br />
                               <span className="text-xs text-gray-500">
                                 {new Date(activity.created_at).toLocaleString()}
