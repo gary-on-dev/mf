@@ -5,7 +5,7 @@ import io from 'socket.io-client';
 import { Menu, User, Bell, LogOut } from 'lucide-react';
 import metovanLogo from '../assets/metovan1.png';
 
-// Initialize Socket.IO with the correct URL
+// Initialize Socket.IO with the correct URL.
 const socket = io(process.env.REACT_APP_API_URL || 'https://metovan-backend.onrender.com', {
   reconnection: true,
   reconnectionAttempts: 5,
