@@ -474,22 +474,22 @@ const AdminDashboard = () => {
     <Layout onMenuToggle={toggleSidebar}>
       <div className="flex min-h-screen">
         {/* Sidebar */}
-        <aside
-          className={`fixed top-0 left-0 w-64 bg-white shadow-md z-40 md:static md:flex md:flex-col h-auto ${
-            sidebarOpen ? 'block' : 'hidden'
-          } md:block`}
+       <aside
+          className={`fixed top-0 left-0 w-64 md:w-1/5 bg-white shadow-lg z-40 md:static md:flex md:flex-col h-full transition-transform duration-300 ease-in-out ${
+            sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+          } md:translate-x-0`}
         >
           <div className="p-4 border-b border-gray-200 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-gray-900">Admin Menu</h2>
+            <h2 className="text-xl font-semibold text-gray-900">Admin Menu</h2>
             <button
               onClick={toggleSidebar}
-              className="md:hidden text-gray-600 hover:text-gray-800"
+              className="md:hidden p-2 rounded-md bg-gray-100 hover:bg-gray-200 transition-colors"
               title="Close Sidebar"
             >
-              <X className="h-5 w-5" />
+              <X className="h-6 w-6 text-gray-600" />
             </button>
           </div>
-          <nav className="p-4">
+          <nav className="p-4 flex-1 overflow-y-auto">
             <ul className="space-y-2">
               {[
                 { id: 'users', label: 'Users', icon: Users },
@@ -502,63 +502,63 @@ const AdminDashboard = () => {
                 <li key={tab.id}>
                   <button
                     onClick={() => handleTabChange(tab.id)}
-                    className={`w-full flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md ${
+                    className={`w-full flex items-center gap-3 px-4 py-3 text-base font-medium rounded-lg transition-colors ${
                       activeTab === tab.id
-                        ? 'bg-blue-100 text-blue-600'
-                        : 'text-gray-600 hover:bg-gray-100'
+                        ? 'bg-blue-100 text-blue-700'
+                        : 'text-gray-700 hover:bg-gray-100'
                     }`}
                   >
-                    <tab.icon className="h-4 w-4" />
+                    <tab.icon className="h-5 w-5" />
                     {tab.label}
                   </button>
                 </li>
               ))}
             </ul>
           </nav>
-        </aside>
+      </aside>
 
         {/* Main Content */}
-        <div className="flex-1 p-4 sm:p-6">
-          <div className="space-y-6">
+        <div className="flex-1 p-6 md:p-8">
+          <div className="sticky top-0 bg-gray-100 z-10 pb-4">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div>
-                <h1 className="text-lg sm:text-xl font-bold text-gray-900">Admin Dashboard</h1>
-                <p className="text-gray-600 text-sm">Manage users, approved emails, properties, and more.</p>
+                <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
+                <p className="text-gray-600 text-base mt-1">Manage users, properties, tenants, and more.</p>
               </div>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-3">
                 {activeTab === 'properties' && (
                   <button
                     onClick={() => setShowAddProperty(true)}
-                    className="bg-blue-600 text-white px-3 py-1.5 rounded-md hover:bg-blue-700 flex items-center gap-1 text-sm"
+                    className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 text-base"
                   >
-                    <Plus className="h-4 w-4" />
+                    <Plus className="h-5 w-5" />
                     Add Property
                   </button>
                 )}
                 {activeTab === 'tenants' && (
                   <button
                     onClick={() => setShowAddTenant(true)}
-                    className="bg-green-600 text-white px-3 py-1.5 rounded-md hover:bg-green-700 flex items-center gap-1 text-sm"
+                    className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 text-base"
                   >
-                    <Plus className="h-4 w-4" />
+                    <Plus className="h-5 w-5" />
                     Add Tenant
                   </button>
                 )}
                 {activeTab === 'users' && (
                   <button
                     onClick={() => setShowAddUser(true)}
-                    className="bg-purple-600 text-white px-3 py-1.5 rounded-md hover:bg-purple-700 flex items-center gap-1 text-sm"
+                    className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2 text-base"
                   >
-                    <Plus className="h-4 w-4" />
+                    <Plus className="h-5 w-5" />
                     Approve Email
                   </button>
                 )}
                 {activeTab === 'approved-emails' && (
                   <button
                     onClick={() => setShowAddUser(true)}
-                    className="bg-purple-600 text-white px-3 py-1.5 rounded-md hover:bg-purple-700 flex items-center gap-1 text-sm"
+                    className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2 text-base"
                   >
-                    <Plus className="h-4 w-4" />
+                    <Plus className="h-5 w-5" />
                     Approve Email
                   </button>
                 )}
@@ -566,55 +566,55 @@ const AdminDashboard = () => {
             </div>
 
             {/* Summary Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              <div className="bg-white p-3 rounded-lg shadow">
-                <div className="flex items-center gap-2">
-                  <Building className="h-5 w-5 text-blue-600" />
-                  <h3 className="text-sm font-semibold">Total Properties</h3>
+             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="bg-white p-4 rounded-lg shadow-md hover:shadow-lg transition-shadow">
+                <div className="flex items-center gap-3">
+                  <Building className="h-6 w-6 text-blue-600" />
+                  <h3 className="text-base font-semibold">Total Properties</h3>
                 </div>
-                <p className="text-lg font-bold">{totalProperties}</p>
+                <p className="text-xl font-bold mt-2">{totalProperties}</p>>
               </div>
-              <div className="bg-white p-3 rounded-lg shadow">
-                <div className="flex items-center gap-2">
-                  <Users className="h-5 w-5 text-green-600" />
-                  <h3 className="text-sm font-semibold">Active Tenants</h3>
+              <div className="bg-white p-4 rounded-lg shadow-md hover:shadow-lg transition-shadow">
+                <div className="flex items-center gap-3">
+                  <Users className="h-6 w-6 text-green-600" />
+                  <h3 className="text-base font-semibold">Active Tenants</h3>
                 </div>
-                <p className="text-lg font-bold">{activeTenants}</p>
+                <p className="text-xl font-bold mt-2">{activeTenants}</p>
               </div>
-              <div className="bg-white p-3 rounded-lg shadow">
-                <div className="flex items-center gap-2">
-                  <TrendingUp className="h-5 w-5 text-yellow-600" />
-                  <h3 className="text-sm font-semibold">Occupancy Rate</h3>
+              <div className="bg-white p-4 rounded-lg shadow-md hover:shadow-lg transition-shadow">
+                <div className="flex items-center gap-3">
+                  <TrendingUp className="h-6 w-6 text-yellow-600" />
+                  <h3 className="text-base font-semibold">Occupancy Rate</h3>
                 </div>
-                <p className="text-lg font-bold">{occupancyRate}%</p>
+                <p className="text-xl font-bold mt-2">{occupancyRate}%</p>
               </div>
-              <div className="bg-white p-3 rounded-lg shadow">
-                <div className="flex items-center gap-2">
-                  <Wrench className="h-5 w-5 text-orange-600" />
-                  <h3 className="text-sm font-semibold">Pending Maintenance</h3>
+              <div className="bg-white p-4 rounded-lg shadow-md hover:shadow-lg transition-shadow">
+                <div className="flex items-center gap-3">
+                  <Wrench className="h-6 w-6 text-orange-600" />
+                  <h3 className="text-base font-semibold">Pending Maintenance</h3>
                 </div>
-                <p className="text-lg font-bold">{pendingMaintenance}</p>
+                <p className="text-xl font-bold mt-2">{pendingMaintenance}</p>
               </div>
-              <div className="bg-white p-3 rounded-lg shadow">
-                <div className="flex items-center gap-2">
-                  <AlertCircle className="h-5 w-5 text-red-600" />
-                  <h3 className="text-sm font-semibold">Urgent Maintenance</h3>
+              <div className="bg-white p-4 rounded-lg shadow-md hover:shadow-lg transition-shadow">
+                <div className="flex items-center gap-3">
+                  <AlertCircle className="h-6 w-6 text-red-600" />
+                  <h3 className="text-base font-semibold">Urgent Maintenance</h3>
                 </div>
-                <p className="text-lg font-bold">{urgentMaintenance}</p>
+                <p className="text-xl font-bold mt-2">{urgentMaintenance}</p>
               </div>
-              <div className="bg-white p-3 rounded-lg shadow">
-                <div className="flex items-center gap-2">
-                  <DollarSign className="h-5 w-5 text-green-600" />
-                  <h3 className="text-sm font-semibold">Monthly Revenue (KSH)</h3>
+              <div className="bg-white p-4 rounded-lg shadow-md hover:shadow-lg transition-shadow">
+                <div className="flex items-center gap-3">
+                  <DollarSign className="h-6 w-6 text-green-600" />
+                  <h3 className="text-base font-semibold">Monthly Revenue (KSH)</h3>
                 </div>
-                <p className="text-lg font-bold">{monthlyRevenue.toLocaleString()}</p>
+                <p className="text-xl font-bold mt-2">{monthlyRevenue.toLocaleString()}</p>
               </div>
             </div>
 
             {/* CRUD Content with Slide Animation */}
             <div
-              className={`bg-white p-4 rounded-lg shadow relative transition-transform duration-300 ease-in-out ${
-                slideDirection === 'right' ? 'translate-x-10 opacity-0' : slideDirection === 'left' ? '-translate-x-10 opacity-0' : 'translate-x-0 opacity-100'
+              className={`bg-white p-6 rounded-lg shadow-md transition-opacity duration-300 ease-in-out ${
+                slideDirection ? 'opacity-0' : 'opacity-100'
               }`}
             >
               {activeTab === 'users' && (
@@ -631,34 +631,34 @@ const AdminDashboard = () => {
                       <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
                           <tr>
-                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
-                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Phone</th>
-                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Role</th>
-                            <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
+                            <th className="px-4 py-3 text-left text-sm font-medium text-gray-600 uppercase">Name</th>
+                            <th className="px-4 py-3 text-left text-sm font-medium text-gray-600 uppercase">Email</th>
+                            <th className="px-4 py-3 text-left text-sm font-medium text-gray-600 uppercase">Phone</th>
+                            <th className="px-4 py-3 text-left text-sm font-medium text-gray-600 uppercase">Role</th>
+                            <th className="px-4 py-3 text-right text-sm font-medium text-gray-600 uppercase">Actions</th>
                           </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
                           {users.map((user) => (
-                            <tr key={user.id}>
-                              <td className="px-3 py-2 text-xs sm:text-sm text-gray-900">{user.name || '-'}</td>
-                              <td className="px-3 py-2 text-xs sm:text-sm text-gray-900">{user.email || '-'}</td>
-                              <td className="px-3 py-2 text-xs sm:text-sm text-gray-900">{user.phone || '-'}</td>
-                              <td className="px-3 py-2 text-xs sm:text-sm text-gray-900">{user.role === 'admin' ? 'Admin/Agent' : user.role || '-'}</td>
-                              <td className="px-3 py-2 text-right text-xs sm:text-sm">
+                            <tr key={user.id} className="block sm:table-row">
+                              <td className="block sm:table-cell px-4 py-3 text-sm text-gray-900 before:content-['Name:'] before:font-semibold before:sm:hidden">{user.name || '-'}</td>
+                              <td className="block sm:table-cell px-4 py-3 text-sm text-gray-900 before:content-['Email:'] before:font-semibold before:sm:hidden">{user.email || '-'}</td>
+                              <td className="block sm:table-cell px-4 py-3 text-sm text-gray-900 before:content-['Phone:'] before:font-semibold before:sm:hidden">{user.phone || '-'}</td>
+                              <td className="block sm:table-cell px-4 py-3 text-sm text-gray-900 before:content-['Role:'] before:font-semibold before:sm:hidden">{user.role === 'admin' ? 'Admin/Agent' : user.role || '-'}</td>
+                              <td className="block sm:table-cell px-4 py-3 text-right text-sm">
                                 <button
                                   onClick={() => setShowEditUser(user)}
-                                  className="text-blue-600 hover:text-blue-800 mr-2"
+                                  className="text-blue-600 hover:text-blue-800 p-2"
                                   title="Edit User"
                                 >
-                                  <Edit className="h-4 w-4" />
+                                  <Edit className="h-5 w-5" />
                                 </button>
                                 <button
                                   onClick={() => handleDeleteUser(user.id)}
-                                  className="text-red-600 hover:text-red-800"
+                                  className="text-red-600 hover:text-red-800 p-2"
                                   title="Delete User"
                                 >
-                                  <Trash className="h-4 w-4" />
+                                  <Trash className="h-5 w-5" />
                                 </button>
                               </td>
                             </tr>
