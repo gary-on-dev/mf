@@ -572,7 +572,7 @@ const AdminDashboard = () => {
                   <Building className="h-6 w-6 text-blue-600" />
                   <h3 className="text-base font-semibold">Total Properties</h3>
                 </div>
-                <p className="text-xl font-bold mt-2">{totalProperties}</p>>
+                <p className="text-xl font-bold mt-2">{totalProperties}</p>
               </div>
               <div className="bg-white p-4 rounded-lg shadow-md hover:shadow-lg transition-shadow">
                 <div className="flex items-center gap-3">
