@@ -486,10 +486,10 @@ const AdminDashboard = () => {
               className="md:hidden p-2 rounded-md bg-gray-100 hover:bg-gray-200 transition-colors"
               title="Close Sidebar"
             >
-              <X className="h-6 w-6 text-gray-600" />
+              <X className="h-5 w-5 text-gray-600" />
             </button>
           </div>
-          <nav className="p-4 flex-1 overflow-y-auto">
+          <nav className="p-3 flex-1 overflow-y-auto">
             <ul className="space-y-2">
               {[
                 { id: 'users', label: 'Users', icon: Users },
@@ -529,36 +529,36 @@ const AdminDashboard = () => {
                 {activeTab === 'properties' && (
                   <button
                     onClick={() => setShowAddProperty(true)}
-                    className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 text-base"
+                    className="bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 text-base"
                   >
-                    <Plus className="h-5 w-5" />
+                    <Plus className="h-4 w-4" />
                     Add Property
                   </button>
                 )}
                 {activeTab === 'tenants' && (
                   <button
                     onClick={() => setShowAddTenant(true)}
-                    className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 text-base"
+                    className="bg-green-600 text-white px-3 py-1.5 rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 text-base"
                   >
-                    <Plus className="h-5 w-5" />
+                    <Plus className="h-4 w-4" />
                     Add Tenant
                   </button>
                 )}
                 {activeTab === 'users' && (
                   <button
                     onClick={() => setShowAddUser(true)}
-                    className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2 text-base"
+                    className="bg-purple-600 text-white px-3 py-1.5 rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2 text-base"
                   >
-                    <Plus className="h-5 w-5" />
+                    <Plus className="h-4 w-4" />
                     Approve Email
                   </button>
                 )}
                 {activeTab === 'approved-emails' && (
                   <button
                     onClick={() => setShowAddUser(true)}
-                    className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2 text-base"
+                    className="bg-purple-600 text-white px-3 py-1.5 rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2 text-base"
                   >
-                    <Plus className="h-5 w-5" />
+                    <Plus className="h-4 w-4" />
                     Approve Email
                   </button>
                 )}
